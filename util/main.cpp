@@ -174,12 +174,17 @@ void encode_unweighted(fs::path const &p, fs::path const &index, fs::path const 
     uint32_t a, b;
     std::vector<std::pair<uint32_t, uint32_t>> v;
     uint32_t max_vert = 0;
-    while (ifs >> a >> b){
-        v.push_back(std::make_pair(a, b));
-        if (make_undirected){
-            v.push_back(std::make_pair(b,a));
+    std::string line;
+    while (std::getline(ifs, line)) {
+        if (std::istringstream(line) >> a >> b) {
+            v.push_back(std::make_pair(a, b));
+            if (make_undirected){
+                v.push_back(std::make_pair(b,a));
+            }
+            max_vert = std::max(max_vert, std::max(a, b));
+        } else {
+            std::cout << line << std::endl;
         }
-        max_vert = std::max(max_vert, std::max(a, b));
     }
 
     BOOST_LOG_TRIVIAL(info) << "|V| " << max_vert;
