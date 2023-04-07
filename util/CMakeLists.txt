@@ -1,16 +1,39 @@
 find_package(Boost REQUIRED COMPONENTS program_options log log_setup)
-find_package(TBB REQUIRED)
 
+cmake_host_system_information(RESULT DIST_NAME QUERY DISTRIB_NAME)
+cmake_host_system_information(RESULT DIST_VERSION QUERY DISTRIB_VERSION_ID)
+if(${DIST_NAME} MATCHES "Ubuntu" AND ${DIST_VERSION} MATCHES "18.04")
+  # On Ubuntu 18.04, we can not link tbb using find_package
+  MESSAGE(STATUS "Linux dist: ubuntu 18.04")
+  set(TBB_SHARED_OBJECT   "/usr/lib/x86_64-linux-gnu/libtbb.so")
+  add_library(TBBLIB SHARED IMPORTED)
+  set_target_properties(TBBLIB PROPERTIES
+    IMPORTED_LOCATION "${TBB_SHARED_OBJECT}"
+    INTERFACE_INCLUDE_DIRECTORIES "/usr/include")
+else()
+  find_package(TBB REQUIRED)
+endif()
 
 add_executable(util main.cpp)
-target_link_libraries(util PRIVATE
-  project_options
-  project_warnings
-  Boost::program_options
-  Boost::log
-  Boost::log_setup
-  TBB::tbb
-  )
+if(${DIST_NAME} MATCHES "Ubuntu" AND ${DIST_VERSION} MATCHES "18.04")
+  target_link_libraries(util PRIVATE
+    project_options
+    project_warnings
+    Boost::program_options
+    Boost::log
+    Boost::log_setup
+    TBBLIB
+    )
+else()
+  target_link_libraries(util PRIVATE
+    project_options
+    project_warnings
+    Boost::program_options
+    Boost::log
+    Boost::log_setup
+    TBB::tbb
+    )
+endif()
 
 target_compile_definitions(util PRIVATE BOOST_LOG_DYN_LINK)
 

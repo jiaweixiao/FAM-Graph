@@ -11,6 +11,10 @@
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
 
+// For tbb older than 2019.x
+#define TBB_PREVIEW_GLOBAL_CONTROL 1
+#include <tbb/global_control.h>
+
 namespace famgraph {
 
 enum class Buffering { SINGLE = 1, DOUBLE = 2 };
