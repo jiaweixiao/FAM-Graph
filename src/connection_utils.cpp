@@ -272,7 +272,7 @@ void rc_client_loop(const char *host, const char *port, struct client_context *c
   rdma_destroy_event_channel(ec);
 }
 
-void rc_server_loop(const char *port)
+void rc_server_loop(const char *host, const char *port)
 {
   struct sockaddr_in6 addr;
   struct rdma_cm_id *listener = NULL;
@@ -280,6 +280,7 @@ void rc_server_loop(const char *port)
 
   memset(&addr, 0, sizeof(addr));
   addr.sin6_family = AF_INET6;
+	inet_pton(AF_INET6, host, &addr.sin6_addr);
   addr.sin6_port = htons(static_cast<uint16_t>(atoi(port)));
 
   TEST_Z(ec = rdma_create_event_channel());

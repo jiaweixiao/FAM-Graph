@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <rdma/rdma_cma.h>
 
+#include <arpa/inet.h>
+
 #define TEST_NZ(x) do { if ( (x)) rc_die("error: " #x " failed (returned non-zero)." ); } while (0)
 #define TEST_Z(x)  do { if (!(x)) rc_die("error: " #x " failed (returned zero/null)."); } while (0)
 
@@ -23,7 +25,7 @@ void rc_die(const char *message);
 struct ibv_pd * rc_get_pd();
 unsigned long rc_get_num_connections();
 
-void rc_server_loop(const char *port);
+void rc_server_loop(const char *host, const char *port);
 
 constexpr int TIMEOUT_IN_MS = 500;
 
