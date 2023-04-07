@@ -18,8 +18,7 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wpedantic"
-#include <oneapi/dpl/execution>
-#include <oneapi/dpl/algorithm>
+#include <tbb/parallel_sort.h>
 #pragma GCC diagnostic pop
 
 namespace po = boost::program_options;
@@ -116,7 +115,7 @@ void encode_weighted(fs::path const &p, fs::path const &index, fs::path const &a
     }
     //sort the vector by starting vertex
     if (!vm.count("sorted")){
-        oneapi::dpl::sort(oneapi::dpl::execution::par_unseq,v.begin(),v.end());
+        tbb::parallel_sort(v.begin(), v.end());
         // std::sort(v.begin(), v.end());
     }
             
@@ -188,7 +187,7 @@ void encode_unweighted(fs::path const &p, fs::path const &index, fs::path const 
     
     //sort the vector by starting vertex
     if (!vm.count("sorted")){
-        oneapi::dpl::sort(oneapi::dpl::execution::par_unseq,v.begin(),v.end());
+        tbb::parallel_sort(v.begin(), v.end());
         // std::sort(v.begin(), v.end());
     }
             

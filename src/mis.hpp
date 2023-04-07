@@ -20,7 +20,7 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wconversion"
-#include <oneapi/tbb.h>
+#include <tbb/tbb.h>
 #pragma GCC diagnostic pop
 
 #include <unordered_map>
