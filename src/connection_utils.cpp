@@ -3,6 +3,7 @@
 #include <boost/log/trivial.hpp>
 
 #include <client_runtime.hpp>
+#include <configs.hpp>
 
 struct context
 {
@@ -84,10 +85,10 @@ void build_qp_attr(struct ibv_qp_init_attr *qp_attr, bool is_qp0)// take index a
 
   qp_attr->qp_type = IBV_QPT_RC;
 
-  qp_attr->cap.max_send_wr = 16000;// max from ibv_devinfo: max_qp_wr: 16351
-  qp_attr->cap.max_recv_wr = 10;
-  qp_attr->cap.max_send_sge = 1;
-  qp_attr->cap.max_recv_sge = 1;
+  qp_attr->cap.max_send_wr = QP_MAX_SEND_WR; // max from ibv_devinfo: max_qp_wr: 16351
+  qp_attr->cap.max_recv_wr = QP_MAX_RECV_WR;
+  qp_attr->cap.max_send_sge = QP_MAX_SEND_SGE;
+  qp_attr->cap.max_recv_sge = QP_MAX_RECV_SGE;
   qp_attr->sq_sig_all = 0;// shouldn't need this explicitly
 }
 
