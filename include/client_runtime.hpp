@@ -14,6 +14,7 @@
 
 #include "../src/graph_types.hpp" //Could probably just forward declare struct application
 #include "../src/stats.hpp"
+#include "../src/mmap_util.hpp"
 
 void run_client(boost::program_options::variables_map& vm);
 
@@ -34,6 +35,7 @@ struct client_context
     uint64_t peer_addr;
     uint32_t peer_rkey;
 
+    uint32_t * const e;
     std::string index_file;
     std::string kernel;
     std::string ofile;
@@ -52,9 +54,9 @@ struct client_context
     std::unique_ptr<famgraph::application> app;
     uint64_t num_edges{0};
 
-    client_context(std::string const& t_file, unsigned long const t_num_conns, std::string const& t_kernel,
+    client_context(std::string const& t_file, uint32_t * const E, unsigned long const t_num_conns, std::string const& t_kernel,
                    std::string const& t_ofile, bool const t_print_vtable, boost::program_options::variables_map * const t_vm)
-        :index_file(t_file), kernel(t_kernel), ofile(t_ofile), cm_ids(t_num_conns), connections(t_num_conns), print_vtable(t_print_vtable), vm(t_vm) {}
+        :e(E), index_file(t_file), kernel(t_kernel), ofile(t_ofile), cm_ids(t_num_conns), connections(t_num_conns), print_vtable(t_print_vtable), vm(t_vm) {}
 
     void finish_application();
     

@@ -39,6 +39,74 @@ void validate_params(boost::program_options::variables_map const &vm)
       boost::program_options::validation_error::invalid_option_value, "index file");
 }
 
+template<typename T> auto num_elements(boost::filesystem::path const &p)
+{
+  const auto file_size = boost::filesystem::file_size(p);
+  const auto n = file_size / sizeof(T);
+  return n;
+}
+
+class file_mapper
+{
+  constexpr static uint64_t default_chunk = 30UL * (1 << 30);// 30 GB
+  uint64_t const chunk_size{ default_chunk };
+  uint64_t offset{ 0 };
+  uint64_t filesize;
+  int fd;
+
+public:
+  file_mapper(std::string const &file, uint64_t t_fsize)
+    : filesize{ t_fsize }, fd{ open(file.c_str(), O_RDONLY) }
+  {
+    if (this->fd == -1) { throw std::runtime_error("open() failed on .adj file"); }
+  }
+  
+  ~file_mapper() { close(this->fd);}
+
+  file_mapper(const file_mapper &) = delete;
+  file_mapper &operator=(const file_mapper &) = delete;
+
+  bool has_next() noexcept { return this->offset < this->filesize; }
+
+  auto operator()()
+  {
+    auto length = std::min(this->chunk_size, this->filesize - this->offset);
+    auto del = [length](void *p) {
+      auto r = munmap(p, length);
+      if (r) BOOST_LOG_TRIVIAL(fatal) << "munmap chunk failed";
+    };
+
+    auto constexpr flags = MAP_PRIVATE | MAP_POPULATE;
+    auto ptr = mmap(0, length, PROT_READ, flags, this->fd, static_cast<long>(this->offset));
+    this->offset += length;
+
+    return make_pair(std::unique_ptr<void, decltype(del)>(ptr, del), length);
+  }
+};
+
+auto get_edge_list_local(std::string file, bool use_HP)
+{
+  namespace fs = boost::filesystem;
+
+  fs::path p(file);
+  if (!(fs::exists(p) && fs::is_regular_file(p)))
+    throw std::runtime_error(".adj file not found");
+
+  auto const edges = num_elements<uint32_t>(p);
+  auto ptr = famgraph::mmap_ptr<uint32_t>(edges, use_HP);
+  auto array = reinterpret_cast<char*>(ptr);
+  auto const filesize = edges * sizeof(uint32_t);
+  file_mapper get_mapped_chunk{file, filesize};
+
+  while (get_mapped_chunk.has_next()){
+    auto const [fptr, len] = get_mapped_chunk();
+    std::memcpy(array, fptr.get(), len);
+    array += len;
+  }
+
+  return ptr;
+}
+
 void send_message(struct rdma_cm_id *id)
 {
   struct client_context *ctx = static_cast<struct client_context *>(id->context);
@@ -240,6 +308,7 @@ void run_client(boost::program_options::variables_map &vm)
   std::string server_ip = vm["server-addr"].as<std::string>();
   std::string server_port = vm["port"].as<std::string>();
   std::string ifile = vm["indexfile"].as<std::string>();
+  std::string efile = vm["edgefile"].as<std::string>();
   std::string kernel = vm["kernel"].as<std::string>();
   std::string ofile = vm["ofile"].as<std::string>();
   auto const threads = vm["threads"].as<unsigned long>();
@@ -255,10 +324,18 @@ void run_client(boost::program_options::variables_map &vm)
   BOOST_LOG_TRIVIAL(info) << "Server IPoIB address: " << server_ip
                           << " port: " << server_port;
   BOOST_LOG_TRIVIAL(info) << "Index File: " << ifile;
+  BOOST_LOG_TRIVIAL(info) << "Use huge page: " << vm.count("hp");
+  BOOST_LOG_TRIVIAL(info) << "All local mem: " << vm.count("local-mem");
+
+  uint32_t * e = nullptr;
+  if (vm.count("local-mem")) {
+    e = get_edge_list_local(efile, vm.count("hp"));
+    BOOST_LOG_TRIVIAL(info) << "Load edge file into local memory";
+  }
 
   struct client_context ctx
   {
-    ifile, num_connections, kernel, ofile, print_vtable, &vm
+    ifile, e, num_connections, kernel, ofile, print_vtable, &vm
   };
   rc_init(on_pre_conn,
     NULL,// on connect

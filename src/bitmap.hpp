@@ -270,6 +270,38 @@ auto pack_window2(std::array<struct ibv_send_wr, famgraph::WR_WINDOW_SIZE> &wr_w
   return std::make_pair(v, wrs);
 }
 
+namespace local_buffer {
+  template<typename F, typename Context>
+  void for_each_active_batch_local(Bitmap const &frontier,
+    tbb::blocked_range<uint32_t> const my_range,
+    Context &c,
+    F const &function) noexcept
+  {
+    auto const vtable = c.p.first.get();
+    auto ctx = c.context;
+
+    tbb::parallel_for(my_range, [&](auto const &range) {
+      struct timespec t1, t2, res;
+      uint32_t v = range.begin();
+      uint32_t const range_end = range.end();
+      while (v < range_end) {
+        if (frontier.get_bit(v)) {
+          uint32_t volatile *e_buf = ctx->e + vtable[v].edge_offset;
+          uint32_t n_edges = famgraph::get_num_edges(
+            v, vtable, ctx->app->num_vertices, ctx->app->num_edges);
+          clock_gettime(CLOCK_MONOTONIC, &t1);
+          function(v, const_cast<uint32_t *const>(e_buf), n_edges);
+          clock_gettime(CLOCK_MONOTONIC, &t2);
+          famgraph::timespec_diff(&t2, &t1, &res);
+          ctx->stats.function_time.local() += res.tv_sec * 1000000000L + res.tv_nsec;
+        }
+        v++;
+      }
+    });
+    print_stats_round(ctx->stats);
+    clear_stats_round(ctx->stats);
+  }
+}// namespace local_buffer
 namespace single_buffer {
   template<typename F, typename Context>
   void for_each_active_batch(Bitmap const &frontier,
@@ -277,6 +309,10 @@ namespace single_buffer {
     Context &c,
     F const &function) noexcept
   {
+    if (c.context->vm->count("local-mem")) {
+      local_buffer::for_each_active_batch_local(frontier, my_range, c, function);
+      return;
+    }
     auto const idx = c.p.first.get();
     auto RDMA_area = c.RDMA_window.get();
     auto const edge_buf_size = c.edge_buf_size;

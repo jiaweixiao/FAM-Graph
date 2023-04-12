@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
       "delta", po::value<uint32_t>()->default_value(25), "delta step divisor for MIS")(
       "start-vertex", po::value<uint32_t>()->default_value(1), "start vertex for bfs")(
       "hp", "use huge pages")(
+      "local-mem", "use edge files in local memory")(
       "double-buffer", "use double buffering")(
       "edgewindow", po::value<uint32_t>()->default_value(1), "how many times larger than max outdegree the edgewindow should be")(
       "no-numa-bind", "don't do numa bind");
